@@ -10,12 +10,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $id = $data['AccountId'];
 
-    // get all the transactions for the account
-    $stmt = $pdo->prepare('SELECT * FROM transactions WHERE AccountId = ?');
+    // get the last 5 transactions
+    $stmt = $pdo->prepare('SELECT * FROM transactions WHERE AccountId = ? ORDER BY TransactionDate DESC LIMIT 5');
     $stmt->execute([$id]);
     $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    echo json_encode($result);
+
+
+    echo json_encode($result);  
 }
 
 
