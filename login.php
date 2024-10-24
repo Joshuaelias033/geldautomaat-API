@@ -9,41 +9,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Get the input data
     $data = json_decode(file_get_contents("php://input"), true);
 
+    if (!isset($data['AccountNumber']) || !isset($data['PinHash'])) {
+        echo json_encode(['message' => 'Invalid input', 'success' => false]);
+        exit;
+    }
+
     $accnumber = $data['AccountNumber'];
     $pin = $data['PinHash'];
 
     // Retrieve account details using account number
     $stmt = $pdo->prepare('SELECT * FROM Accounts WHERE AccountNumber = ?');
     $stmt->execute([$accnumber]);
-    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    $account = $stmt->fetch(PDO::FETCH_ASSOC);
 
     // Check if the account exists
-    if (!$result) {
+    if (!$account) {
         echo json_encode(['message' => 'Account not found', 'success' => false]);
-        return;
+        exit;
     }
 
     // If account exists, verify the pin
-    if (password_verify($pin, $result['PinHash'])) {
+    if (password_verify($pin, $account['PinHash'])) {
         $token = bin2hex(random_bytes(32));  // Generate a new token
 
-        // first check if theres a token already for that account if not insert a new one else update the existing one
+        // Check if there is already a token for that account
         $stmt = $pdo->prepare('SELECT * FROM Account_tokens WHERE AccountId = ?');
-        $stmt->execute([$result['AccountId']]);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        $stmt->execute([$account['AccountId']]);
+        $existingToken = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if (!$result) {
+        if (!$existingToken) {
+            // Insert a new token if no token exists
             $stmt = $pdo->prepare('INSERT INTO Account_tokens (AccountId, Token) VALUES (?, ?)');
-            $stmt->execute([$result['AccountId'], $token]);
+            $stmt->execute([$account['AccountId'], $token]);
         } else {
+            // Update the existing token
             $stmt = $pdo->prepare('UPDATE Account_tokens SET Token = ? WHERE AccountId = ?');
-            $stmt->execute([$token, $result['AccountId']]);
+            $stmt->execute([$token, $account['AccountId']]);
         }
-        // Store the token in session for further use
+
+        // Store the token in the session for further use
         $_SESSION['token'] = $token;
 
         // Respond with success and the generated token
-        echo json_encode(['token' => $token, 'message' => 'Logged in' , 'success' => true]);
+        echo json_encode(['token' => $token, 'message' => 'Logged in', 'success' => true]);
     } else {
         // Invalid pin response
         echo json_encode(['message' => 'Invalid Pin', 'success' => false]);
