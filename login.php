@@ -5,56 +5,62 @@ header("Content-Type: application/json");
 include 'db.php';
 session_start();
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Get the input data
-    $data = json_decode(file_get_contents("php://input"), true);
+class Login {
+    private $pdo;
 
-    if (!isset($data['AccountNumber']) || !isset($data['PinHash'])) {
-        echo json_encode(['message' => 'Invalid input', 'success' => false]);
-        exit;
+    public function __construct($pdo) {
+        $this->pdo = $pdo;
     }
 
-    $accnumber = $data['AccountNumber'];
-    $pin = $data['PinHash'];
-
-    // Retrieve account details using account number
-    $stmt = $pdo->prepare('SELECT * FROM Accounts WHERE AccountNumber = ?');
-    $stmt->execute([$accnumber]);
-    $account = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    // Check if the account exists
-    if (!$account) {
-        echo json_encode(['message' => 'Account not found', 'success' => false]);
-        exit;
+    public function handleRequest() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $data = json_decode(file_get_contents("php://input"), true);
+            $this->login($data);
+        }
     }
 
-    // If account exists, verify the pin
-    if (password_verify($pin, $account['PinHash'])) {
-        $token = bin2hex(random_bytes(32));  // Generate a new token
-
-        // Check if there is already a token for that account
-        $stmt = $pdo->prepare('SELECT * FROM Account_tokens WHERE AccountId = ?');
-        $stmt->execute([$account['AccountId']]);
-        $existingToken = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$existingToken) {
-            // Insert a new token if no token exists
-            $stmt = $pdo->prepare('INSERT INTO Account_tokens (AccountId, Token) VALUES (?, ?)');
-            $stmt->execute([$account['AccountId'], $token]);
-        } else {
-            // Update the existing token
-            $stmt = $pdo->prepare('UPDATE Account_tokens SET Token = ? WHERE AccountId = ?');
-            $stmt->execute([$token, $account['AccountId']]);
+    private function login($data) {
+        if (!isset($data['AccountNumber']) || !isset($data['PinHash'])) {
+            echo json_encode(['message' => 'Invalid input', 'success' => false]);
+            exit;
         }
 
-        // Store the token in the session for further use
-        $_SESSION['token'] = $token;
+        $accnumber = $data['AccountNumber'];
+        $pin = $data['PinHash'];
 
-        // Respond with success and the generated token
-        echo json_encode(['token' => $token, 'message' => 'Logged in', 'success' => true]);
-    } else {
-        // Invalid pin response
-        echo json_encode(['message' => 'Invalid Pin', 'success' => false]);
+        $stmt = $this->pdo->prepare('SELECT * FROM Accounts WHERE AccountNumber = ?');
+        $stmt->execute([$accnumber]);
+        $account = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$account) {
+            echo json_encode(['message' => 'Account not found', 'success' => false]);
+            exit;
+        }
+
+        if (password_verify($pin, $account['PinHash'])) {
+            $token = bin2hex(random_bytes(32));
+
+            $stmt = $this->pdo->prepare('SELECT * FROM Account_tokens WHERE AccountId = ?');
+            $stmt->execute([$account['AccountId']]);
+            $existingToken = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$existingToken) {
+                $stmt = $this->pdo->prepare('INSERT INTO Account_tokens (AccountId, Token) VALUES (?, ?)');
+                $stmt->execute([$account['AccountId'], $token]);
+            } else {
+                $stmt = $this->pdo->prepare('UPDATE Account_tokens SET Token = ? WHERE AccountId = ?');
+                $stmt->execute([$token, $account['AccountId']]);
+            }
+
+            $_SESSION['token'] = $token;
+
+            echo json_encode(['token' => $token, 'message' => 'Logged in', 'success' => true]);
+        } else {
+            echo json_encode(['message' => 'Invalid Pin', 'success' => false]);
+        }
     }
 }
+
+$login = new Login($pdo);
+$login->handleRequest();
 ?>
