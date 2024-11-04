@@ -1,30 +1,42 @@
 <?php
-include '../db.php'; // Ensure this includes your database connection
+include '../db.php';
 
-// Check if the request method is POST
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Retrieve data from JSON body
-    $input = json_decode(file_get_contents("php://input"), true);
-    $Email = $input['email'];
-    $password = $input['password'];
+class AdminLogin {
+    private $pdo;
 
-    // Prepare a statement to look for an existing email
-    $stmt = $pdo->prepare('SELECT * FROM Employees WHERE Email = ?');
-    $stmt->execute([$Email]);
-    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    public function __construct($pdo) {
+        $this->pdo = $pdo;
+    }
 
-    if ($result) {
-        // Verify the password
-        if (password_verify($password, $result['PasswordHash'])) {
-            //add loggedin boolean to the result
-            $result['loggedin'] = true;
-            $result['message'] = 'Logged in';
-            echo json_encode($result);
-        } else {
-            echo json_encode(['loggedin' => false, 'message' => 'Invalid Password']);
+    public function handleRequest() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $input = json_decode(file_get_contents("php://input"), true);
+            $this->login($input);
         }
-    } else {
-        echo json_encode(['loggedin' => false, 'message' => 'Invalid Email']);
+    }
+
+    private function login($input) {
+        $Email = $input['email'];
+        $password = $input['password'];
+
+        $stmt = $this->pdo->prepare('SELECT * FROM Employees WHERE Email = ?');
+        $stmt->execute([$Email]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($result) {
+            if (password_verify($password, $result['PasswordHash'])) {
+                $result['loggedin'] = true;
+                $result['message'] = 'Logged in';
+                echo json_encode($result);
+            } else {
+                echo json_encode(['loggedin' => false, 'message' => 'Invalid Password']);
+            }
+        } else {
+            echo json_encode(['loggedin' => false, 'message' => 'Invalid Email']);
+        }
     }
 }
+
+$adminLogin = new AdminLogin($pdo);
+$adminLogin->handleRequest();
 ?>
