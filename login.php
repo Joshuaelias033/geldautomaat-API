@@ -37,6 +37,11 @@ class Login {
             exit;
         }
 
+        if ($account['IsBlocked'] == 1) {
+            echo json_encode(['message' => 'Account is blocked', 'success' => false]);
+            exit;
+        }
+
         if (password_verify($pin, $account['PinHash'])) {
             $token = bin2hex(random_bytes(32));
 
