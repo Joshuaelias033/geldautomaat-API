@@ -20,8 +20,8 @@ class EditAccount {
     }
 
     private function editAccount($input) {
-        $stmt = $this->pdo->prepare('UPDATE accounts SET firstname = ?, lastname = ?, AccountNumber = ?, Balance = ? WHERE Accountid = ?');
-        $stmt->execute([$input['FirstName'], $input['LastName'], $input['AccountNumber'], $input['Balance'], $input['AccountId']]);
+        $stmt = $this->pdo->prepare('UPDATE accounts SET firstname = ?, lastname = ?, AccountNumber = ?, Balance = ?, IsBlocked = ? WHERE Accountid = ?');
+        $stmt->execute([$input['FirstName'], $input['LastName'], $input['AccountNumber'], $input['Balance'], $input['IsBlocked'], $input['AccountId']]);
         echo json_encode(['message' => 'Account updated']);
     }
 }
