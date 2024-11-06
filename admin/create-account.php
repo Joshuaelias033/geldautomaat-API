@@ -19,8 +19,9 @@ class CreateAccount {
     }
 
     private function createAccount($data) {
-        $data['PinHash'] = password_hash($data['Pinhash'], PASSWORD_BCRYPT);
-        $stmt = $this->pdo->prepare('INSERT INTO accounts (AccountNumber, firstname, lastname, Pinhash, Balance, isblocked) VALUES (?, ?, ?, ?, ?, ?)');
+        $data['PinHash'] = password_hash($data['PinHash'], PASSWORD_DEFAULT);
+        var_dump($data['PinHash'] );
+        $stmt = $this->pdo->prepare('INSERT INTO accounts (AccountNumber, firstname, lastname, PinHash, Balance, isblocked) VALUES (?, ?, ?, ?, ?, ?)');
         $stmt->execute([ $data['AccountNumber'], $data['FirstName'], $data['LastName'], $data['PinHash'], $data['Balance'], 0]);
         echo json_encode(['message' => 'Account created']);
 
